@@ -25,6 +25,14 @@ for i in $(seq 1 60); do
   sleep 1
 done
 
+# Report whether Ollama found a GPU, so users can confirm CUDA acceleration.
+if nvidia-smi >/dev/null 2>&1; then
+  echo "GPU detected — Ollama will use CUDA acceleration."
+else
+  echo "No GPU exposed to the container — running on CPU."
+  echo "(If you have an NVIDIA GPU, re-run with '--device nvidia.com/gpu=all'.)"
+fi
+
 # Build the agent model on first run. If it already exists (persisted via the
 # ollama-data volume), this is skipped so startup is instant on later runs.
 if ollama list | awk '{print $1}' | grep -qx "$AGENT_MODEL"; then

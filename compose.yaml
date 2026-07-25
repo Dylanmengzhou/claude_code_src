@@ -40,6 +40,14 @@ services:
 
     working_dir: /workspace
 
+    # --- GPU acceleration (NVIDIA / CUDA) ---
+    # The image auto-uses the GPU when one is exposed, and falls back to CPU
+    # otherwise. To enable GPU with compose, uncomment the block below.
+    # (With plain `podman run`, add: --device nvidia.com/gpu=all)
+    #
+    # devices:
+    #   - "nvidia.com/gpu=all"
+
 volumes:
   bubu-config:
   ollama-data:

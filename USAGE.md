@@ -79,7 +79,11 @@ podman build -t bubu:2.1.88 .
 
 **在你想让 bubu 帮忙的项目目录里**运行下面的命令。它会把当前目录作为工作区。
 
-**macOS / Linux：**
+> 🚀 **有 NVIDIA 显卡想用 CUDA 加速？** 先看下面的[「开启 GPU 加速」](#开启-gpu-加速nvidia-显卡)一节，
+> 配好之后在命令里**加一行** `--device nvidia.com/gpu=all` 即可（见下方带 GPU 的示例）。
+> 没有 N 卡就用不带那一行的版本，会自动用 CPU。
+
+**macOS / Linux（CPU）：**
 ```bash
 podman run --rm -it \
   -v "$PWD:/workspace" \
@@ -88,7 +92,17 @@ podman run --rm -it \
   bubu:2.1.88
 ```
 
-**Windows（PowerShell）：**
+**Linux / Windows-WSL（带 NVIDIA GPU 加速）：**
+```bash
+podman run --rm -it \
+  --device nvidia.com/gpu=all \
+  -v "$PWD:/workspace" \
+  -v bubu-config:/root/.bubu \
+  -v ollama-data:/root/.ollama \
+  bubu:2.1.88
+```
+
+**Windows（PowerShell，CPU）：**
 ```powershell
 podman run --rm -it `
   -v "${PWD}:/workspace" `
@@ -96,6 +110,9 @@ podman run --rm -it `
   -v ollama-data:/root/.ollama `
   bubu:2.1.88
 ```
+
+> 启动后会打印一行提示：看到 `GPU detected — Ollama will use CUDA acceleration.`
+> 说明 GPU 生效了；看到 `running on CPU` 则是在用 CPU。
 
 ### 第一次运行会发生什么？
 
@@ -135,6 +152,50 @@ podman compose run --rm bubu  # 相当于第四步，卷都自动挂好
 
 ---
 
+## 开启 GPU 加速（NVIDIA 显卡）
+
+镜像**自动兼容**：暴露了 GPU 就用 CUDA 加速，没有就用 CPU，**同一个镜像不用改**。
+要用上显卡，需要一次性配置好宿主机，让容器能“看到”显卡。
+
+> ⚠️ 仅 **NVIDIA 显卡**支持。AMD 显卡和 **Mac** 用不了 CUDA（Mac 只能 CPU）。
+
+### Windows（你多半是这种）
+
+1. **装最新 NVIDIA 显卡驱动**（[官网下载](https://www.nvidia.com/Download/index.aspx)），Windows 版驱动已自带 WSL 的 GPU 支持。
+2. 确保 Podman 用的是 **WSL2** 后端（`podman machine` 在 Windows 上跑在 WSL2 里）。
+3. 在 **WSL2 里**安装 NVIDIA Container Toolkit（让容器能透传 GPU）：
+   ```bash
+   curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+   curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+     sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+   sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+   ```
+4. 生成 Podman 能识别的 GPU 配置（CDI）：
+   ```bash
+   sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+   ```
+5. 验证能列出显卡：
+   ```bash
+   nvidia-ctk cdi list
+   ```
+   能看到 `nvidia.com/gpu=all` 就 OK。
+
+配好后，运行 bubu 时用**带 `--device nvidia.com/gpu=all` 的那条命令**（见第四步）。
+
+### Linux
+
+步骤和上面第 3~5 步一样（直接在系统里执行，不用进 WSL）：装最新 NVIDIA 驱动 → 装
+NVIDIA Container Toolkit → `nvidia-ctk cdi generate` → 运行时加 `--device nvidia.com/gpu=all`。
+
+### 怎么确认真的用上了 GPU
+
+启动 bubu 时留意开头那行日志：
+- `GPU detected — Ollama will use CUDA acceleration.` → 显卡生效 ✅
+- `No GPU exposed to the container — running on CPU.` → 还在用 CPU，回到上面检查配置。
+
+---
+
 ## 常见问题
 
 **Q：一直卡在 “downloading base model”。**
@@ -160,6 +221,15 @@ podman machine start
 
 **Q：想重新下载 / 换模型。**
 删掉模型存储卷即可重来：`podman volume rm ollama-data`（会导致下次运行重新下载 13GB）。
+
+**Q：我有 N 卡，但启动显示 “running on CPU”。**
+GPU 没透传进容器。检查：① 运行命令是否带了 `--device nvidia.com/gpu=all`；② 是否装了
+NVIDIA Container Toolkit 并执行了 `nvidia-ctk cdi generate`（见「开启 GPU 加速」）；
+③ Windows 用户确认在 WSL2 里配的、驱动是最新版。
+
+**Q：`--device nvidia.com/gpu=all` 报错找不到设备。**
+说明 CDI 配置没生成。重跑 `sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`，
+再用 `nvidia-ctk cdi list` 确认列出了 `nvidia.com/gpu=all`。
 
 ---
 

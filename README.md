@@ -28,6 +28,9 @@ podman run --rm -it \
 > 用 Docker 的话把 `podman` 换成 `docker` 即可。
 > ⚠️ 第一次运行会自动下载约 **13GB** 模型（`huihui_ai/gpt-oss-abliterated`，Ollama 公共库），
 > 需联网且硬盘留足 40GB。模型存到 `ollama-data` 卷，只下一次。详见 [USAGE.md](USAGE.md)。
+>
+> 🚀 **有 NVIDIA 显卡**？镜像自动兼容 CUDA：配好宿主机后在运行命令里加 `--device nvidia.com/gpu=all`
+> 即可用上 GPU 加速，没显卡则自动回退 CPU。配置步骤见 [USAGE.md「开启 GPU 加速」](USAGE.md#开启-gpu-加速nvidia-显卡)。
 
 ---
 

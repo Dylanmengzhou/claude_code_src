@@ -1,13 +1,25 @@
-FROM node:20-slim
+# CUDA runtime base so Ollama can use an NVIDIA GPU when one is exposed to the
+# container. Ollama auto-detects the GPU at runtime: if the container was
+# started WITH GPU access it uses CUDA, otherwise it transparently falls back
+# to CPU. So this single image works everywhere (GPU or not, incl. Mac = CPU).
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
-# git for repo operations; ripgrep/audio binaries ship inside vendor/.
-# curl is needed to install Ollama and health-check it.
+# Let the NVIDIA container runtime expose the GPU + compute/utility caps.
+# Harmless when no GPU is present.
+ENV NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# System deps: git for repo ops, curl/ca-certificates for installers.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates curl \
+    && apt-get install -y --no-install-recommends git ca-certificates curl gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the Ollama server into the image so the container is fully
-# self-contained — no host-side Ollama required.
+# Node.js 20 (NodeSource) — bubu runs on Node.
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ollama server (its installer bundles the CUDA-capable runtime libs).
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # The bubu-code package (Claude Code 2.1.88), driven by the bundled Ollama backend
