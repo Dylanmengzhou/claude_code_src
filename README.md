@@ -9,6 +9,22 @@
 
 ---
 
+## 🐳 想直接用 Docker 一键跑起来（模型已内置）？
+
+**➡️ 完整、详细的图文教程见 [USAGE.md](USAGE.md)（Windows / Linux / macOS 通用）。**
+
+**模型（`gpt-oss-agent:32k`）和 Ollama 服务都已经打包进镜像**，无需单独安装 Ollama、无需联网下载模型、无需改任何配置。装好 Docker 后，两条命令即可：
+
+```bash
+docker compose build              # 构建镜像（含 ~13.8GB 模型，约 14~15GB）
+docker compose run --rm bubu      # 启动 bubu，自动拉起内置 Ollama
+```
+
+> ⚠️ 镜像约 **14~15GB**（模型权重在里面），请确保 Docker 有足够磁盘空间。
+> 模型目录 `ollama-models/`（约 13.8GB）需随仓库一起完整获取。
+
+---
+
 ## 🌟 强力推荐：DataEyesAI - 你的全能 AI 助手
 
 > **想要像 Claude Code 一样高效，却苦于没有稳定的 API 接入？**

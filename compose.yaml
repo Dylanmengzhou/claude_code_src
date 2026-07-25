@@ -1,0 +1,41 @@
+# bubu (Claude Code 2.1.88) running against a bundled Ollama model.
+#
+# The gpt-oss-agent:32k model AND the Ollama server are baked into the image,
+# so this is truly one-click — no host-side Ollama, no model download.
+#
+# Quick start:
+#   docker compose build      # builds a ~14.5GB image (model is inside)
+#   docker compose run --rm bubu
+
+services:
+  bubu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bubu:2.1.88
+
+    # Interactive terminal — bubu is a TUI, so it needs a real tty + stdin.
+    stdin_open: true
+    tty: true
+
+    environment:
+      # Ollama runs inside this same container.
+      ANTHROPIC_BASE_URL: "http://localhost:11434"
+      # The bundled model. No need to change this — it's the only model in the image.
+      ANTHROPIC_MODEL: "gpt-oss-agent:32k"
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "gpt-oss-agent:32k"
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "gpt-oss-agent:32k"
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "gpt-oss-agent:32k"
+      ANTHROPIC_SMALL_FAST_MODEL: "gpt-oss-agent:32k"
+
+    volumes:
+      # Your current project directory becomes bubu's workspace. On Windows run
+      # this from PowerShell or WSL so ${PWD} resolves correctly.
+      - "${PWD:-.}:/workspace"
+      # Persist login/session/config state across runs.
+      - bubu-config:/root/.bubu
+
+    working_dir: /workspace
+
+volumes:
+  bubu-config:

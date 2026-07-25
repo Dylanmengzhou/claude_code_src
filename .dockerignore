@@ -1,0 +1,19 @@
+# Only the bubu package + docker settings are needed to build the image.
+# Everything else (src/, node_modules/, the .tgz, git history) is excluded to
+# keep the build context — and therefore the image — small.
+*
+!bubu-package
+!settings-ollama.docker.json
+!docker-entrypoint.sh
+!ollama-models
+
+# Inside the package, drop non-Linux vendor binaries (the image runs Linux)
+bubu-package/vendor/**/arm64-darwin/**
+bubu-package/vendor/**/x64-darwin/**
+bubu-package/vendor/**/arm64-win32/**
+bubu-package/vendor/**/x64-win32/**
+
+# Source maps / editor backups are not needed at runtime (~80MB saved)
+bubu-package/cli.js.map
+bubu-package/cli.js.bak
+bubu-package/cli.js.bak2

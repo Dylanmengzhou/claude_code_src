@@ -1,0 +1,13 @@
+# 模型权重(13.8GB,不进 git)
+ollama-models/
+
+# 依赖 / 构建产物
+node_modules/
+
+# source map / 备份(几十 MB,运行时用不到)
+bubu-package/cli.js.map
+bubu-package/cli.js.bak
+bubu-package/cli.js.bak2
+
+# 系统垃圾
+.DS_Store
