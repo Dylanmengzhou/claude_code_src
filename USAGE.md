@@ -67,11 +67,48 @@ cd claude_code_src
 
 ## 第三步：构建镜像（只需第一次）
 
+**国外用户 / 有代理**（用官方源）：
 ```bash
 podman build -t bubu:2.1.88 .
 ```
 
+**中国大陆用户**（走国内镜像源，见下方说明）：
+```bash
+podman build --build-arg CN=1 -t bubu:2.1.88 .
+```
+
 > 这一步安装 bubu 和 Ollama，需要几分钟。**注意：这一步还不会下载 13GB 的模型**，模型是在你第一次“运行”时才下载的。
+
+<details>
+<summary><b>🇨🇳 中国大陆用户：拉不到基础镜像怎么办（点开看）</b></summary>
+
+构建的第一步要从 Docker Hub 拉 CUDA 基础镜像，国内经常连不上。给 Podman 配一个镜像加速器即可：
+
+```bash
+mkdir -p ~/.config/containers
+cat > ~/.config/containers/registries.conf <<'EOF'
+unqualified-search-registries = ["docker.io"]
+
+[[registry]]
+location = "docker.io"
+[[registry.mirror]]
+location = "docker.m.daocloud.io"
+[[registry.mirror]]
+location = "docker.1panel.live"
+EOF
+```
+
+然后重启虚拟机让配置生效：
+```bash
+podman machine stop && podman machine start
+```
+
+之后再用 `--build-arg CN=1` 构建。`CN=1` 会把 apt 和 Node 的下载切换到阿里云 / 清华镜像；
+不加 `CN=1`（默认）则走官方源，适合国外用户。
+</details>
+
+> 💡 **Apple 芯片的 Mac** 构建时需额外加 `--platform linux/amd64`（CUDA 镜像是 x86 的），
+> 例如 `podman build --platform linux/amd64 --build-arg CN=1 -t bubu:2.1.88 .`。
 
 ---
 

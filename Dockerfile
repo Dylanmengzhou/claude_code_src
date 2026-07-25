@@ -1,26 +1,51 @@
 # CUDA runtime base so Ollama can use an NVIDIA GPU when one is exposed to the
-# container. Ollama auto-detects the GPU at runtime: if the container was
-# started WITH GPU access it uses CUDA, otherwise it transparently falls back
-# to CPU. So this single image works everywhere (GPU or not, incl. Mac = CPU).
+# container. Ollama auto-detects the GPU at runtime: with GPU access it uses
+# CUDA, otherwise it transparently falls back to CPU. One image works for GPU
+# and non-GPU hosts (incl. Mac = CPU).
+#
+# NOTE (China networks): the base image is pulled from Docker Hub. If you can't
+# reach registry-1.docker.io, configure a mirror in
+# ~/.config/containers/registries.conf (see USAGE.md) and restart the machine.
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
-# Let the NVIDIA container runtime expose the GPU + compute/utility caps.
-# Harmless when no GPU is present.
+# ---------------------------------------------------------------------------
+# Mirror switch. Default (CN=0) uses official upstream sources — correct for
+# users OUTSIDE China. Users in China build with `--build-arg CN=1` to route
+# apt + Node downloads through domestic mirrors (Aliyun / Tsinghua).
+# ---------------------------------------------------------------------------
+ARG CN=0
+
+# Let the NVIDIA container runtime expose the GPU. Harmless when no GPU present.
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-# System deps: git for repo ops, curl/ca-certificates for installers.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates curl gnupg \
+# apt: swap to the Aliyun mirror only when CN=1.
+RUN if [ "$CN" = "1" ]; then \
+        sed -i 's|http://archive.ubuntu.com|https://mirrors.aliyun.com|g; s|http://security.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list ; \
+    fi \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Node.js 20 (NodeSource) — bubu runs on Node.
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
+# Node.js 20 prebuilt binary. Official nodejs.org by default; Tsinghua when CN=1.
+ARG NODE_VERSION=v20.18.1
+RUN if [ "$CN" = "1" ]; then \
+        NODE_BASE="https://mirrors.tuna.tsinghua.edu.cn/nodejs-release" ; \
+    else \
+        NODE_BASE="https://nodejs.org/dist" ; \
+    fi \
+    && curl -fsSL "${NODE_BASE}/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz" -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && rm /tmp/node.tar.xz \
+    && node --version
 
-# Ollama server (its installer bundles the CUDA-capable runtime libs).
-RUN curl -fsSL https://ollama.com/install.sh | sh
+# Ollama — pinned release tarball from GitHub (works from both China and
+# abroad; more reliable than the install.sh script or the "latest" URL).
+ARG OLLAMA_VERSION=v0.11.4
+RUN curl -fsSL "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-amd64.tgz" -o /tmp/ollama.tgz \
+    && tar -xzf /tmp/ollama.tgz -C /usr \
+    && rm /tmp/ollama.tgz \
+    && ollama --version || true
 
 # The bubu-code package (Claude Code 2.1.88), driven by the bundled Ollama backend
 COPY bubu-package /opt/bubu/package
