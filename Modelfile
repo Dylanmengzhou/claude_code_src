@@ -1,0 +1,8 @@
+# Recreates the gpt-oss-agent:32k model used by bubu.
+#
+# It is the public huihui_ai/gpt-oss-abliterated model with the context
+# window widened to 32k. The entrypoint pulls the base model and builds
+# this on first run, so nothing large needs to ship in the image or repo.
+FROM huihui_ai/gpt-oss-abliterated:latest
+PARAMETER num_ctx 32768
+PARAMETER temperature 1

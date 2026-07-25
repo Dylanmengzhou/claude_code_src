@@ -1,11 +1,14 @@
-# bubu (Claude Code 2.1.88) running against a bundled Ollama model.
+# bubu (Claude Code 2.1.88) running against a bundled Ollama backend.
 #
-# The gpt-oss-agent:32k model AND the Ollama server are baked into the image,
-# so this is truly one-click — no host-side Ollama, no model download.
+# The Ollama server is baked into the image. On the FIRST run the container
+# downloads the model (~13GB) and builds the 32k-context variant; that model
+# is saved to the ollama-data volume, so later runs start instantly.
 #
-# Quick start:
-#   docker compose build      # builds a ~14.5GB image (model is inside)
-#   docker compose run --rm bubu
+# Quick start (Podman):
+#   podman compose build
+#   podman compose run --rm bubu
+#
+# Docker works too — replace `podman` with `docker`.
 
 services:
   bubu:
@@ -21,7 +24,6 @@ services:
     environment:
       # Ollama runs inside this same container.
       ANTHROPIC_BASE_URL: "http://localhost:11434"
-      # The bundled model. No need to change this — it's the only model in the image.
       ANTHROPIC_MODEL: "gpt-oss-agent:32k"
       ANTHROPIC_DEFAULT_OPUS_MODEL: "gpt-oss-agent:32k"
       ANTHROPIC_DEFAULT_SONNET_MODEL: "gpt-oss-agent:32k"
@@ -29,13 +31,15 @@ services:
       ANTHROPIC_SMALL_FAST_MODEL: "gpt-oss-agent:32k"
 
     volumes:
-      # Your current project directory becomes bubu's workspace. On Windows run
-      # this from PowerShell or WSL so ${PWD} resolves correctly.
+      # Your current project directory becomes bubu's workspace.
       - "${PWD:-.}:/workspace"
       # Persist login/session/config state across runs.
       - bubu-config:/root/.bubu
+      # Persist the downloaded model so it's only fetched once.
+      - ollama-data:/root/.ollama
 
     working_dir: /workspace
 
 volumes:
   bubu-config:
+  ollama-data:

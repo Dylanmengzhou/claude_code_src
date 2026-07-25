@@ -9,19 +9,25 @@
 
 ---
 
-## 🐳 想直接用 Docker 一键跑起来（模型已内置）？
+## 🐳 想一键跑起来（Podman / Docker，模型自动下载）？
 
-**➡️ 完整、详细的图文教程见 [USAGE.md](USAGE.md)（Windows / Linux / macOS 通用）。**
+**➡️ 面向最终用户的完整手册见 [USAGE.md](USAGE.md)（macOS / Linux / Windows 通用）。**
 
-**模型（`gpt-oss-agent:32k`）和 Ollama 服务都已经打包进镜像**，无需单独安装 Ollama、无需联网下载模型、无需改任何配置。装好 Docker 后，两条命令即可：
+Ollama 服务已内置进镜像，**模型在第一次运行时自动下载并构建**，无需手动装 Ollama、无需改配置。装好 Podman 后：
 
 ```bash
-docker compose build              # 构建镜像（含 ~13.8GB 模型，约 14~15GB）
-docker compose run --rm bubu      # 启动 bubu，自动拉起内置 Ollama
+podman build -t bubu:2.1.88 .     # 构建镜像（几分钟，此步不下模型）
+# 在你的项目目录里运行；第一次会自动下载 ~13GB 模型，之后秒启
+podman run --rm -it \
+  -v "$PWD:/workspace" \
+  -v bubu-config:/root/.bubu \
+  -v ollama-data:/root/.ollama \
+  bubu:2.1.88
 ```
 
-> ⚠️ 镜像约 **14~15GB**（模型权重在里面），请确保 Docker 有足够磁盘空间。
-> 模型目录 `ollama-models/`（约 13.8GB）需随仓库一起完整获取。
+> 用 Docker 的话把 `podman` 换成 `docker` 即可。
+> ⚠️ 第一次运行会自动下载约 **13GB** 模型（`huihui_ai/gpt-oss-abliterated`，Ollama 公共库），
+> 需联网且硬盘留足 40GB。模型存到 `ollama-data` 卷，只下一次。详见 [USAGE.md](USAGE.md)。
 
 ---
 

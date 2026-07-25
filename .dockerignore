@@ -5,7 +5,7 @@
 !bubu-package
 !settings-ollama.docker.json
 !docker-entrypoint.sh
-!ollama-models
+!Modelfile
 
 # Inside the package, drop non-Linux vendor binaries (the image runs Linux)
 bubu-package/vendor/**/arm64-darwin/**

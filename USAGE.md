@@ -1,155 +1,166 @@
-# bubu — 用 Docker 一键在本地跑（模型已内置）
+# bubu 使用手册（用 Podman 一键跑本地 AI 编程助手）
 
-这份指南教你把这个仓库 clone 下来后，用 **Docker** 启动 `bubu`（Claude Code 2.1.88）。
+这是一份**从零开始、照着做就能跑起来**的手册。跟着一步步来即可，不需要懂 Docker/AI 原理。
 
-**模型（`gpt-oss-agent:32k`）和 Ollama 服务都已经打包进镜像里**，所以：
+`bubu` 是一个跑在终端里的 AI 编程助手（Claude Code 2.1.88），它使用一个**本地大模型**（不联网调用任何付费 API，不用登录任何账号）。模型会在**第一次运行时自动下载**，你什么都不用手动配。
 
-- ✅ 不需要在电脑上单独安装 Ollama
-- ✅ 不需要联网下载模型
-- ✅ 不需要改任何配置
-
-只要装了 Docker，`build` + `run` 两条命令就能跑。全程不调用任何官方 API，不需要登录 Anthropic 账号。
-
-适用系统：**Windows / Linux / macOS**。
+适用系统：**macOS / Linux / Windows**。
 
 ---
 
-## 目录
+## 你需要准备什么
 
-1. [它是什么 / 工作原理](#1-它是什么--工作原理)
-2. [唯一的准备：安装 Docker](#2-唯一的准备安装-docker)
-3. [下载并启动 bubu](#3-下载并启动-bubu)
-4. [日常使用](#4-日常使用)
-5. [常见问题排查](#5-常见问题排查)
+- 一台能装 **Podman** 的电脑（Docker 也行，命令把 `podman` 换成 `docker` 即可）。
+- **硬盘至少留 40GB 空闲**（模型约 13GB，加上镜像和运行空间）。
+- **能联网**（仅第一次下载模型时需要，之后可离线用）。
 
 ---
 
-## 1. 它是什么 / 工作原理
-
-- `bubu` 是终端里的 AI 编程助手（Claude Code 2.1.88 的构建产物）。
-- 它默认调用 Anthropic 的云端 API，但这里被配置成调用 **本地 Ollama** 跑的开源大模型。
-- **关键区别**：Ollama 服务和模型权重都在同一个容器里，容器一启动就自动把 Ollama 拉起来，bubu 直连 `localhost:11434`。你什么都不用配。
-
-数据流长这样（全部发生在同一个容器内）：
-
-```
-你在终端输入
-      │
-      ▼
-┌───────────────────────────────────────────────┐
-│  Docker 容器                                    │
-│                                                 │
-│  ┌──────────┐   HTTP :11434   ┌──────────────┐ │
-│  │  bubu    │ ───────────────▶│  Ollama       │ │
-│  │          │ ◀───────────────│  (内置模型)    │ │
-│  └──────────┘                 └──────────────┘ │
-└───────────────────────────────────────────────┘
-```
-
----
-
-## 2. 唯一的准备：安装 Docker
+## 第一步：安装 Podman
 
 | 系统 | 怎么装 |
 |------|--------|
-| **Windows** | 下载并安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)。安装时按提示启用 WSL 2。装完打开 Docker Desktop，等状态变成绿色 “running”。|
-| **macOS** | 下载 [Docker Desktop](https://www.docker.com/products/docker-desktop/) 安装并打开。|
-| **Linux** | 安装 [Docker Engine](https://docs.docker.com/engine/install/) 和 [Docker Compose 插件](https://docs.docker.com/compose/install/linux/)。|
+| **macOS** | 装 [Podman Desktop](https://podman-desktop.io/)，或用 Homebrew：`brew install podman` |
+| **Windows** | 装 [Podman Desktop](https://podman-desktop.io/)，按提示启用 WSL2 |
+| **Linux** | 用系统包管理器，如 Ubuntu：`sudo apt install podman` |
 
-装好后，打开终端（Windows 用 **PowerShell**）验证：
+装好后，打开终端（Windows 用 **PowerShell**）验证能用：
 
 ```bash
-docker --version
-docker compose version
+podman --version
 ```
 
-两条都能打印版本号就 OK。
+能打印版本号就 OK。
 
-> **磁盘要求**：镜像里包含约 13.8GB 的模型权重，构建后镜像约 **14~15GB**。请确保 Docker 有足够的磁盘空间。
+### macOS / Windows 额外一步：创建并启动虚拟机
+
+macOS 和 Windows 上，Podman 需要一个 Linux 虚拟机来跑容器。**磁盘一定要给足**（放得下 13GB 模型）：
+
+```bash
+podman machine init --disk-size 60 --cpus 4 --memory 8192
+podman machine start
+```
+
+> `--disk-size 60` 是 60GB，务必给够。第一次会下载一个基础系统镜像，等几分钟。
+> Linux 用户跳过这一步。
+
+验证虚拟机在运行：
+
+```bash
+podman machine list
+```
+
+看到状态是 “Currently running” 就 OK。
 
 ---
 
-## 3. 下载并启动 bubu
-
-### 第一步：克隆仓库
+## 第二步：拿到项目代码
 
 ```bash
-git clone <这个仓库的地址>
-cd <仓库目录名>
+git clone https://github.com/Dylanmengzhou/claude_code_src.git
+cd claude_code_src
 ```
 
-> ⚠️ 模型权重（`ollama-models/` 目录，约 13.8GB）需要随仓库一起获得。如果仓库通过
-> Git LFS 或其他方式分发大文件，请确认该目录已完整下载后再构建。
-
-### 第二步：构建镜像（只需第一次）
-
-```bash
-docker compose build
-```
-
-> 这一步会把 Ollama 和模型打进镜像，构建时间取决于机器，模型层较大请耐心等待。
-
-### 第三步：启动 bubu
-
-```bash
-docker compose run --rm bubu
-```
-
-启动时会先看到 `Waiting for Ollama to be ready...`，等内置的 Ollama 服务就绪后，
-就会进入 bubu 的终端界面。直接开聊 / 让它写代码即可。
-
-> **它在哪操作文件？** 你在**哪个目录**执行 `docker compose run`，
-> bubu 就把**那个目录**当作工作区（在容器里叫 `/workspace`）。
-> 想让它改哪个项目，就先 `cd` 进那个项目目录，再从那里跑这条命令。
->
-> Windows 用户请在 **PowerShell** 或 **WSL** 里运行，别用老式 CMD，否则目录挂载可能失败。
+> 如果对方直接把文件夹发给你（压缩包），解压后 `cd` 进那个目录即可，跳过 `git clone`。
 
 ---
 
-## 4. 日常使用
-
-在你想让 bubu 帮忙的项目目录下运行：
+## 第三步：构建镜像（只需第一次）
 
 ```bash
-docker compose run --rm bubu
+podman build -t bubu:2.1.88 .
 ```
 
-- `--rm` 表示用完自动清理这个临时容器（你的配置和会话不会丢，见下）。
-- 想直接给一个任务而不进交互界面，可以在后面加参数，例如：
+> 这一步安装 bubu 和 Ollama，需要几分钟。**注意：这一步还不会下载 13GB 的模型**，模型是在你第一次“运行”时才下载的。
 
+---
+
+## 第四步：运行 bubu
+
+**在你想让 bubu 帮忙的项目目录里**运行下面的命令。它会把当前目录作为工作区。
+
+**macOS / Linux：**
+```bash
+podman run --rm -it \
+  -v "$PWD:/workspace" \
+  -v bubu-config:/root/.bubu \
+  -v ollama-data:/root/.ollama \
+  bubu:2.1.88
+```
+
+**Windows（PowerShell）：**
+```powershell
+podman run --rm -it `
+  -v "${PWD}:/workspace" `
+  -v bubu-config:/root/.bubu `
+  -v ollama-data:/root/.ollama `
+  bubu:2.1.88
+```
+
+### 第一次运行会发生什么？
+
+1. 屏幕显示 `Waiting for Ollama to start...`
+2. 然后显示 `First run: downloading base model ...（~13GB，会比较久）`
+   —— **这一步在下载模型，取决于网速可能要几十分钟，耐心等，只需一次。**
+3. 下载完自动构建 32k 版本，然后进入 bubu 的界面。
+
+**之后再运行，模型已经存下来了，会直接秒进界面。**
+
+---
+
+## 日常怎么用
+
+- 想让 bubu 帮某个项目干活，就先 `cd` 进那个项目目录，再执行第四步的 `podman run ...` 命令。
+- 进入界面后，直接用中文/英文描述你的需求即可，比如“帮我给这个函数加注释”“找出这段代码的 bug”。
+- 想一句话直接下任务、不进交互界面，在命令末尾加 `-p`：
   ```bash
-  docker compose run --rm bubu -p "帮我把这个函数加上注释"
+  podman run --rm -it -v "$PWD:/workspace" -v bubu-config:/root/.bubu -v ollama-data:/root/.ollama \
+    bubu:2.1.88 -p "帮我把这个函数加上注释"
   ```
 
-**你的登录状态 / 会话历史 / 设置**保存在一个叫 `bubu-config` 的 Docker 卷里，
-容器删了也不会丢，下次启动自动带回来。
+> 你的会话历史、设置会保存在 `bubu-config` 和 `ollama-data` 这两个存储里，容器删了也不丢，下次自动带回来。
 
 ---
 
-## 5. 常见问题排查
+## 用 compose 更省事（可选）
 
-**Q：`docker compose build` 报 daemon 相关错误 / 连不上 Docker。**
-Docker 没启动。Windows/Mac 打开 Docker Desktop 等它变绿；Linux 执行 `sudo systemctl start docker`。
+项目里带了 `compose.yaml`，如果你的 Podman 支持 compose，可以用更短的命令：
 
-**Q：构建失败，提示空间不足 / no space left on device。**
-镜像约 14~15GB。在 Docker Desktop 设置里调大磁盘镜像上限，或清理无用镜像：`docker system prune -a`。
-
-**Q：启动后一直卡在 `Waiting for Ollama to be ready...`。**
-Ollama 在容器内启动失败。查看日志：
 ```bash
-docker compose run --rm --entrypoint sh bubu -c "ollama serve"
+podman compose build          # 相当于第三步
+podman compose run --rm bubu  # 相当于第四步，卷都自动挂好
 ```
-观察报错信息。也可能是模型层没打全（见下一条）。
 
-**Q：提示 model not found / 找不到 `gpt-oss-agent:32k`。**
-说明 `ollama-models/` 目录在构建时不完整（大文件没下全）。确认该目录里
-`blobs/` 下有一个约 13.8GB 的文件，重新完整获取后再 `docker compose build`。
+> 如果 `podman compose` 报“找不到 compose provider”，说明你的环境没装 compose 插件，直接用上面第三、四步的原生命令即可，效果一样。
+
+---
+
+## 常见问题
+
+**Q：一直卡在 “downloading base model”。**
+在下 13GB 模型，正常。慢是网速问题。中断了重跑会**断点续传**，已下的不会白下。
+
+**Q：`podman build` 报 “no space left on device” / 空间不足。**
+虚拟机磁盘不够。删掉重建并给更大磁盘：
+```bash
+podman machine stop
+podman machine rm
+podman machine init --disk-size 80 --cpus 4 --memory 8192
+podman machine start
+```
+
+**Q：连不上 Podman / 提示 socket 错误。**
+虚拟机没启动。跑 `podman machine start`（macOS/Windows）。
 
 **Q：模型回答很慢。**
-容器内的 Ollama 默认用 **CPU** 推理（除非你为 Docker 配置了 GPU 直通）。这个 20B 模型在纯 CPU 上会比较慢，属正常现象，与 Docker 本身无关。
+本地模型靠 CPU 跑（除非配了 GPU），这个模型较大，慢是正常的，跟你的电脑性能有关，不是 bug。
 
-**Q：Windows 下工作目录挂载不进去 / bubu 看不到我的文件。**
-请在 **PowerShell** 或 **WSL** 里运行命令（不要用 CMD）。确保你已经 `cd` 到目标项目目录。
+**Q：bubu 看不到我的文件。**
+确认你是在**目标项目目录里**运行的命令，并且命令里带了 `-v "$PWD:/workspace"`。Windows 请用 PowerShell，别用 CMD。
 
-**Q：我改了 `Dockerfile` 或 `settings-ollama.docker.json`，但没生效。**
-改了这些需要重新 `docker compose build`。
+**Q：想重新下载 / 换模型。**
+删掉模型存储卷即可重来：`podman volume rm ollama-data`（会导致下次运行重新下载 13GB）。
+
+---
+
+有问题先看上面的“常见问题”，绝大多数是磁盘空间或虚拟机没启动。
