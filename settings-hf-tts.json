@@ -1,0 +1,29 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://router.huggingface.co",
+    "ANTHROPIC_AUTH_TOKEN": "<你的HuggingFace令牌，hf_开头，在huggingface.co/settings/tokens创建>",
+    "ANTHROPIC_MODEL": "openai/gpt-oss-20b:groq",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-oss-20b:groq",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "openai/gpt-oss-20b:groq",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "openai/gpt-oss-20b:groq",
+    "ANTHROPIC_SMALL_FAST_MODEL": "openai/gpt-oss-20b:groq",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "HTTPS_PROXY": "http://127.0.0.1:7890",
+    "NO_PROXY": "localhost,127.0.0.1",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000",
+    "VOX_REMOTE": "autodl-vox"
+  },
+  "model": "openai/gpt-oss-20b:groq",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/tts-hook/speak_last_reply.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

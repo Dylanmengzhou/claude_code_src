@@ -11,3 +11,8 @@ bubu-package/cli.js.bak2
 
 # 系统垃圾
 .DS_Store
+
+# 含真实密钥的个人配置(分享版是 *-tts.json,密钥已占位符化)
+settings-hf.json
+settings-modal.json
+__pycache__/
