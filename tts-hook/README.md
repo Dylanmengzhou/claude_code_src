@@ -19,11 +19,14 @@ bubu 每次回复结束后，自动把回复文本用 [VoxCPM2](https://github.c
 2. 上传本目录的三个文件到服务器：
 
    ```bash
-   scp -P <端口> tts-hook/server_setup.sh tts-hook/server_start.sh tts-hook/infer_server.py root@<服务器>:/root/
+   scp -P <端口> tts-hook/server_setup.sh tts-hook/server_start.sh root@<服务器>:/root/
    # 你的声音参考音频（16kHz 单声道 wav，3-10 秒即可）：
    scp -P <端口> jarvis_ref.wav root@<服务器>:/root/   # 装完后 mv 到 /root/VoxCPM/
    # 如果要跑 LLM，还需上传仓库根目录的 Modelfile 到 /root/Modelfile
    ```
+
+   > `infer_server.py` 已包含在 VoxCPM 仓库里，clone 时自带，无需单独上传
+   > （本目录里的副本仅作备份）。
 
 3. 在服务器上执行（建议放 tmux，全程无人值守，可反复重跑）：
 
